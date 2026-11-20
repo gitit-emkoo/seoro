@@ -1,0 +1,460 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  WITHDRAWN
+  SUSPENDED
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum CoupleRoomStatus {
+  WAITING_PARTNER
+  ACTIVE
+  INACTIVE
+}
+
+enum CoupleMemberRole {
+  CREATOR
+  PARTNER
+}
+
+enum CoupleMemberStatus {
+  ACTIVE
+  LEFT
+}
+
+enum InvitationStatus {
+  PENDING
+  USED
+  EXPIRED
+  REVOKED
+}
+
+enum VerificationAvailability {
+  AVAILABLE
+  LIMITED
+  UNAVAILABLE
+}
+
+enum ScopeSelectionStatus {
+  DRAFT
+  SUBMITTED
+}
+
+enum ScopeAgreementStatus {
+  PENDING
+  AGREED
+  INVALIDATED
+}
+
+enum ProductCode {
+  BASIC
+  EXTENDED
+}
+
+enum OrderStatus {
+  AWAITING_PAYMENT
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum SubmissionStatus {
+  NOT_SUBMITTED
+  SUBMITTED
+  UNDER_REVIEW
+  NEEDS_REVISION
+  RESUBMITTED
+  VERIFIED
+  UNVERIFIABLE
+}
+
+enum DisclosureStatus {
+  PENDING
+  CONSENTED
+  REVOKED
+}
+
+enum CouplePromiseStatus {
+  AWAITING_PARTNER
+  AWAITING_AUTHOR
+  COMPLETED
+  CANCELLED
+}
+
+enum PromiseCategory {
+  MONEY
+  CHORES
+  CONFLICT
+  FAMILY
+  FUTURE
+  FREE
+}
+
+model User {
+  id                    String     @id @default(cuid())
+  email                 String     @unique
+  passwordHash          String
+  name                  String?
+  /// 프로필 사진 storage key (없으면 이름 이니셜 표시)
+  avatarKey             String?
+  role                  UserRole   @default(USER)
+  phoneVerified         Boolean    @default(false)
+  identityVerified      Boolean    @default(false)
+  /// 최초 방문 통계카드+설문 온보딩 완료 시각 (초대 유입은 skip 가능)
+  onboardingCompletedAt DateTime?
+  onboardingSource      String? // SELF | INVITE | SKIPPED
+  status                UserStatus @default(ACTIVE)
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+
+  memberships         CoupleMember[]
+  createdRooms        CoupleRoom[]         @relation("CoupleRoomCreator")
+  createdInvites      Invitation[]         @relation("InvitationCreator")
+  scopeSelections     ScopeSelection[]
+  scopeApprovals      ScopeAgreementApproval[]
+  payments            Payment[]
+  submissions         Submission[]
+  disclosureConsents  DisclosureConsent[]
+  authoredPromises    CouplePromise[]      @relation("PromiseAuthor")
+  partnerPromises     CouplePromise[]      @relation("PromisePartner")
+  adminLogs           AdminAuditLog[]      @relation("AdminActor")
+  verificationReviews VerificationRecord[] @relation("VerificationReviewer")
+  onboardingSurvey    OnboardingSurvey?
+}
+
+model ContentCard {
+  id            String   @id @default(cuid())
+  title         String
+  body          String
+  question      String?
+  statisticText String?
+  sourceName    String?
+  sourceUrl     String?
+  surveyYear    String?
+  displayOrder  Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model OnboardingSurvey {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// 관심 확인 항목 코드 목록 (점수화하지 않음)
+  selectedCodes   String[]
+  note            String?
+  completedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model CoupleRoom {
+  id          String           @id @default(cuid())
+  status      CoupleRoomStatus @default(WAITING_PARTNER)
+  createdById String
+  createdBy   User             @relation("CoupleRoomCreator", fields: [createdById], references: [id])
+  createdAt   DateTime         @default(now())
+  connectedAt DateTime?
+  updatedAt   DateTime         @updatedAt
+
+  members            CoupleMember[]
+  invitations        Invitation[]
+  scopeSelections    ScopeSelection[]
+  scopeAgreements    ScopeAgreement[]
+  orders             Order[]
+  submissions        Submission[]
+  disclosureConsents DisclosureConsent[]
+  promises           CouplePromise[]
+
+  @@index([createdById])
+  @@index([status])
+}
+
+model CoupleMember {
+  id           String             @id @default(cuid())
+  coupleRoomId String
+  coupleRoom   CoupleRoom         @relation(fields: [coupleRoomId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         CoupleMemberRole
+  status       CoupleMemberStatus @default(ACTIVE)
+  joinedAt     DateTime           @default(now())
+
+  @@unique([coupleRoomId, userId])
+  @@index([coupleRoomId])
+  @@index([userId, status])
+}
+
+model Invitation {
+  id             String           @id @default(cuid())
+  coupleRoomId   String
+  coupleRoom     CoupleRoom       @relation(fields: [coupleRoomId], references: [id], onDelete: Cascade)
+  createdById    String
+  createdBy      User             @relation("InvitationCreator", fields: [createdById], references: [id])
+  invitationCode String           @unique
+  tokenHash      String           @unique
+  status         InvitationStatus @default(PENDING)
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([coupleRoomId])
+  @@index([createdById])
+  @@index([status, expiresAt])
+}
+
+model VerificationItem {
+  id                       String                  @id @default(cuid())
+  code                     String                  @unique
+  title                    String
+  description              String
+  category                 String
+  requiredDocumentType     String?
+  verificationMethod       String?
+  legalAvailabilityStatus  VerificationAvailability @default(LIMITED)
+  isActive                 Boolean                 @default(true)
+  sortOrder                Int                     @default(0)
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+
+  planItems   ProductPlanItem[]
+  submissions Submission[]
+}
+
+model ProductPlan {
+  id              String      @id @default(cuid())
+  code            ProductCode @unique
+  name            String
+  description     String
+  totalAmount     Int
+  perPersonAmount Int
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  items ProductPlanItem[]
+  orders Order[]
+}
+
+model ProductPlanItem {
+  id                 String @id @default(cuid())
+  productPlanId      String
+  productPlan        ProductPlan      @relation(fields: [productPlanId], references: [id], onDelete: Cascade)
+  verificationItemId String
+  verificationItem   VerificationItem @relation(fields: [verificationItemId], references: [id], onDelete: Cascade)
+
+  @@unique([productPlanId, verificationItemId])
+}
+
+model ScopeSelection {
+  id           String               @id @default(cuid())
+  coupleRoomId String
+  coupleRoom   CoupleRoom           @relation(fields: [coupleRoomId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemIds      String[]
+  planCode     ProductCode?
+  status       ScopeSelectionStatus @default(DRAFT)
+  submittedAt  DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@unique([coupleRoomId, userId])
+  @@index([coupleRoomId])
+}
+
+model ScopeAgreement {
+  id           String               @id @default(cuid())
+  coupleRoomId String
+  coupleRoom   CoupleRoom           @relation(fields: [coupleRoomId], references: [id], onDelete: Cascade)
+  agreedItemIds String[]
+  version      Int                  @default(1)
+  status       ScopeAgreementStatus @default(PENDING)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  agreedAt     DateTime?
+
+  approvals ScopeAgreementApproval[]
+  orders    Order[]
+
+  @@unique([coupleRoomId, version])
+  @@index([coupleRoomId, status])
+}
+
+model ScopeAgreementApproval {
+  id               String         @id @default(cuid())
+  scopeAgreementId String
+  scopeAgreement   ScopeAgreement @relation(fields: [scopeAgreementId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  approvedItemIds  String[]
+  approvedAt       DateTime       @default(now())
+
+  @@unique([scopeAgreementId, userId])
+}
+
+model Order {
+  id               String         @id @default(cuid())
+  coupleRoomId     String
+  coupleRoom       CoupleRoom     @relation(fields: [coupleRoomId], references: [id], onDelete: Cascade)
+  productPlanId    String
+  productPlan      ProductPlan    @relation(fields: [productPlanId], references: [id])
+  scopeAgreementId String
+  scopeAgreement   ScopeAgreement @relation(fields: [scopeAgreementId], references: [id])
+  totalAmount      Int
+  perPersonAmount  Int
+  status           OrderStatus    @default(AWAITING_PAYMENT)
+  expiresAt        DateTime?
+  paidAt           DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  payments Payment[]
+
+  @@index([coupleRoomId])
+  @@index([status])
+}
+
+model Payment {
+  id                    String        @id @default(cuid())
+  orderId               String
+  order                 Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId                String
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount                Int
+  status                PaymentStatus @default(UNPAID)
+  paymentProvider       String        @default("MOCK")
+  providerTransactionId String?
+  paidAt                DateTime?
+  cancelledAt           DateTime?
+  refundedAt            DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@unique([orderId, userId])
+  @@index([userId])
+}
+
+model Submission {
+  id                 String           @id @default(cuid())
+  coupleRoomId       String
+  coupleRoom         CoupleRoom       @relation(fields: [coupleRoomId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verificationItemId String
+  verificationItem   VerificationItem @relation(fields: [verificationItemId], references: [id])
+  status             SubmissionStatus @default(NOT_SUBMITTED)
+  originalFileName   String?
+  storedFileKey      String?
+  mimeType           String?
+  fileSize           Int?
+  note               String?
+  submittedAt        DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  verification VerificationRecord?
+
+  @@unique([coupleRoomId, userId, verificationItemId])
+  @@index([userId])
+  @@index([coupleRoomId])
+}
+
+model VerificationRecord {
+  id                  String           @id @default(cuid())
+  submissionId        String           @unique
+  submission          Submission       @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  method              String           @default("MANUAL_REVIEW")
+  officialCheckStatus String           @default("NONE")
+  adminReviewStatus   String           @default("PENDING")
+  resultSummary       String?
+  revisionRequest     String?
+  unverifiableReason  String?
+  reviewerId          String?
+  reviewer            User?            @relation("VerificationReviewer", fields: [reviewerId], references: [id])
+  verifiedAt          DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+}
+
+model DisclosureConsent {
+  id           String           @id @default(cuid())
+  coupleRoomId String
+  coupleRoom   CoupleRoom       @relation(fields: [coupleRoomId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status       DisclosureStatus @default(PENDING)
+  consentedAt  DateTime?
+  revokedAt    DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@unique([coupleRoomId, userId])
+}
+
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actor      User     @relation("AdminActor", fields: [actorId], references: [id])
+  action     String
+  targetType String
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([createdAt])
+}
+
+/// 우리의 약속 (리커넥트 Agreement 재사용 개념)
+model CouplePromise {
+  id               String              @id @default(cuid())
+  coupleRoomId     String
+  coupleRoom       CoupleRoom          @relation(fields: [coupleRoomId], references: [id], onDelete: Cascade)
+  authorId         String
+  author           User                @relation("PromiseAuthor", fields: [authorId], references: [id])
+  partnerId        String
+  partner          User                @relation("PromisePartner", fields: [partnerId], references: [id])
+  category         PromiseCategory     @default(FREE)
+  title            String
+  content          String
+  condition        String              @default("")
+  status           CouplePromiseStatus @default(AWAITING_PARTNER)
+  authorSignature  String?
+  partnerSignature String?
+  authorSignedAt   DateTime?
+  partnerSignedAt  DateTime?
+  /// 양측 서명 완료 후 발급되는 인증번호
+  documentCode     String?             @unique
+  contentHash      String?
+  completedAt      DateTime?
+  version          Int                 @default(1)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([coupleRoomId, status])
+  @@index([authorId])
+  @@index([partnerId])
+}

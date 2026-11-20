@@ -1,0 +1,26 @@
+{
+  "name": "seoro",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "postinstall": "npm run build -w @seoro/shared",
+    "dev": "npm run build -w @seoro/shared && npm run dev --workspaces --if-present",
+    "dev:web": "npm run build -w @seoro/shared && npm run dev -w @seoro/web",
+    "dev:api": "npm run build -w @seoro/shared && npm run start:dev -w @seoro/api",
+    "build": "npm run build -w @seoro/shared && npm run build -w @seoro/api && npm run build -w @seoro/web",
+    "build:web": "npm run build -w @seoro/shared && npm run build -w @seoro/web",
+    "build:api": "npm run build -w @seoro/shared && npm run build -w @seoro/api",
+    "lint": "npm run lint --workspaces --if-present",
+    "db:generate": "npm run prisma:generate -w @seoro/api",
+    "db:migrate": "npm run prisma:migrate -w @seoro/api",
+    "db:deploy": "npm run prisma:deploy -w @seoro/api",
+    "db:studio": "npm run prisma:studio -w @seoro/api",
+    "db:up": "docker compose up -d db"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
