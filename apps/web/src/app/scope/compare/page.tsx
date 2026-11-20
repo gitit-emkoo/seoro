@@ -155,6 +155,10 @@ export default function ScopeComparePage() {
       : data.bothSelected.length;
   const pendingCount =
     data.agreement?.status === 'AGREED' ? 0 : data.awaitingAgreement.length;
+  const itemsMatch =
+    data.bothReady &&
+    data.awaitingAgreement.length === 0 &&
+    data.bothSelected.length > 0;
 
   return (
     <main className="shell stack-lg">
@@ -165,11 +169,18 @@ export default function ScopeComparePage() {
       </div>
 
       <section className="stack">
-        <h1 className="hero-title">함께 확인할 항목을 정해 보세요</h1>
-        <p className="muted">
-          공통 선택과 아직 합의되지 않은 항목을 구분해 보여 드려요.
-          {live ? ' · 상대방 변경은 자동으로 반영돼요.' : ''}
-        </p>
+        <h1 className="hero-title">
+          {itemsMatch
+            ? '서로 항목이 일치해요'
+            : '함께 확인할 항목을 정해 보세요'}
+        </h1>
+        {!itemsMatch ? (
+          <p className="muted">
+            {`공통 선택과 아직 합의되지 않은 항목을 구분해 보여 드려요.${
+              live ? ' · 상대방 변경은 자동으로 반영돼요.' : ''
+            }`}
+          </p>
+        ) : null}
       </section>
 
       {!data.bothReady ? (

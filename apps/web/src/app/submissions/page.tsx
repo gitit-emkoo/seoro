@@ -95,14 +95,13 @@ export default function SubmissionsPage() {
 
       <section className="stack">
         <h1 className="hero-title">자료를 준비해 주세요</h1>
-        <p className="muted">내 자료는 나만 제출하고, 상대방은 볼 수 없습니다.</p>
+        <p className="muted">상대방은 아직 볼 수 없습니다.</p>
       </section>
 
       <section className="stack">
         {rows.map((row) => (
           <div className="card stack" key={row.id}>
             <strong>{row.verificationItem.title}</strong>
-            <p className="muted">{row.verificationItem.description}</p>
             <p className="muted">
               필요 서류: {row.verificationItem.requiredDocumentType || '안내된 증빙'}
             </p>
@@ -117,7 +116,11 @@ export default function SubmissionsPage() {
               <p className="muted">파일: {row.originalFileName}</p>
             ) : null}
             <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
-              {busyId === row.verificationItemId ? '업로드 중…' : '파일 업로드 / 교체'}
+              {busyId === row.verificationItemId
+                ? '업로드 중…'
+                : row.originalFileName
+                  ? '교체'
+                  : '파일 업로드'}
               <input
                 type="file"
                 accept="application/pdf,image/*"
@@ -141,23 +144,24 @@ export default function SubmissionsPage() {
           <>
             <p className="muted">합의 항목 제출이 모두 완료되었습니다.</p>
             <Link className="btn btn-primary" href="/reports">
-              내 보고서 보기
+              미리보기
             </Link>
           </>
         ) : (
           <>
-            <strong>아직 제출하지 않은 항목이 있어요</strong>
             <p className="muted">
-              합의된 항목을 모두 첨부해야 내 보고서를 보고, 상대방에게 공개할 수 있어요.
               {pendingTitles.length
-                ? ` 남은 항목: ${pendingTitles.join(', ')}`
-                : ''}
+                ? `남은 항목: ${pendingTitles.join(', ')}`
+                : '남은 제출 항목이 있어요'}
             </p>
             <button className="btn btn-primary" type="button" disabled>
-              모두 제출 후 보고서 보기
+              미리보기
             </button>
           </>
         )}
+        <Link className="btn btn-secondary" href="/home">
+          나중에 이어서
+        </Link>
       </section>
     </main>
   );

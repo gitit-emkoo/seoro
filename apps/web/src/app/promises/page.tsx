@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AvatarPair, BackButton, BrandMark } from '@/components/ui';
+import { AvatarPair, BrandMark } from '@/components/ui';
+import { BottomNav } from '@/components/BottomNav';
 import { LoadingBlock } from '@/components/StateBlock';
 import { api, getToken } from '@/lib/api';
 import { fetchJourneyStatus } from '@/lib/progress';
@@ -92,8 +93,8 @@ export default function PromisesHomePage() {
   return (
     <main className="shell stack-lg">
       <div className="topbar">
-        <BackButton href="/app" />
         <BrandMark />
+        <span style={{ width: 42 }} />
         <span style={{ width: 42 }} />
       </div>
 
@@ -118,7 +119,7 @@ export default function PromisesHomePage() {
             void api<CoupleRoom | null>('/api/couples/me').then(setRoom);
           }}
         />
-        <p className="muted">두 사람이 함께 작성하고 서명한 약속을 기록으로 남겨요.</p>
+        <p className="muted">함께 서명한 약속을 인증하고 기록으로 남겨요.</p>
       </section>
 
       <Link className="btn btn-primary" href="/promises/new">
@@ -134,7 +135,7 @@ export default function PromisesHomePage() {
         <>
           <section className="stack">
             <div className="section-head">
-              <h2>서명 대기 중</h2>
+              <h2>진행 중</h2>
             </div>
             {!pending.length ? (
               <p className="muted">진행 중인 약속이 없어요.</p>
@@ -203,9 +204,7 @@ export default function PromisesHomePage() {
       )}
 
       {error ? <p className="error">{error}</p> : null}
-      <Link className="btn btn-ghost" href="/app">
-        앱 홈으로
-      </Link>
+      <BottomNav />
     </main>
   );
 }

@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CoupleAccessService } from '../common/couple-access.service';
+import { decodeUploadFileName } from '../common/filename.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 
@@ -114,9 +115,10 @@ export class SubmissionsService {
       throw new NotFoundException('해당 확인 항목의 제출 대상이 없습니다.');
     }
 
+    const originalFileName = decodeUploadFileName(file.originalname);
     const saved = await this.storage.savePrivate(
       userId,
-      file.originalname,
+      originalFileName,
       file.buffer,
     );
 
@@ -127,7 +129,7 @@ export class SubmissionsService {
       where: { id: submission.id },
       data: {
         status: nextStatus,
-        originalFileName: file.originalname,
+        originalFileName,
         storedFileKey: saved.key,
         mimeType: file.mimetype,
         fileSize: file.size,

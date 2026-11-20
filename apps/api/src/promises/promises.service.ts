@@ -288,6 +288,8 @@ export class PromisesService {
     return {
       documentCode: row.documentCode,
       title: row.title,
+      content: row.content,
+      condition: row.condition,
       status: row.status,
       completedAt: row.completedAt,
       authorName: row.author.name || row.author.email,

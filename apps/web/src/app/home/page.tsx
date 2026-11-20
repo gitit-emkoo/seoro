@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
 import { AvatarPair, BrandMark } from '@/components/ui';
+import { BottomNav } from '@/components/BottomNav';
 import { ProgressSteps } from '@/components/ProgressSteps';
 import { ErrorBlock, LoadingBlock } from '@/components/StateBlock';
 import { api, getToken, setToken } from '@/lib/api';
@@ -16,6 +17,7 @@ import {
 } from '@/lib/invite';
 import {
   fetchJourneyStatus,
+  hasSeenMutualResult,
   promisePromptStorageKey,
   type JourneyStatus,
 } from '@/lib/progress';
@@ -61,10 +63,24 @@ export default function VerifyHubPage() {
         const status = await fetchJourneyStatus();
         setJourney(status);
 
-        if (status?.mutualReady && status.coupleRoomId) {
+        // 상호 결과를 한 번이라도 본 뒤에만 약속 유도 팝업
+        if (
+          status?.mutualReady &&
+          status.coupleRoomId &&
+          hasSeenMutualResult(status.coupleRoomId)
+        ) {
           const key = promisePromptStorageKey(status.coupleRoomId);
-          if (localStorage.getItem(key) !== '1') {
-            setShowPromisePrompt(true);
+          const hidePrompt = localStorage.getItem(key) === '1';
+          if (!hidePrompt) {
+            try {
+              const promises = await api<Array<{ status: string }>>('/api/promises');
+              const hasCompletedPromise = promises.some((p) => p.status === 'COMPLETED');
+              if (!hasCompletedPromise) {
+                setShowPromisePrompt(true);
+              }
+            } catch {
+              setShowPromisePrompt(true);
+            }
           }
         }
       } catch {
@@ -169,7 +185,7 @@ export default function VerifyHubPage() {
 
   function logout() {
     setToken(null);
-    router.replace('/');
+    router.replace('/login');
   }
 
   function closePromisePrompt(hideForever: boolean) {
@@ -187,11 +203,25 @@ export default function VerifyHubPage() {
     router.push('/app');
   }
 
-  const activeTitle = verifyComplete
-    ? '서로 확인이 완료되었어요'
-    : journey?.cta?.label
-      ? `다음 할 일: ${journey.cta.label.replace(/하기$/, '')}`
-      : '다음 할 일';
+  const activeTitle = (() => {
+    if (verifyComplete) return '서로 확인이 완료되었어요';
+    switch (journey?.reason) {
+      case 'NEED_SCOPE_SELECTION':
+        return '확인 항목을 선택해 주세요';
+      case 'NEED_SCOPE_AGREEMENT':
+        return '항목을 합의해 주세요';
+      case 'NEED_PAYMENT':
+        return '결제를 진행해 주세요';
+      case 'NEED_SUBMISSION':
+        return '자료를 업로드해 주세요';
+      case 'NEED_DISCLOSURE':
+        return '결과를 확인해 보세요';
+      case 'WAITING_PARTNER_DISCLOSURE':
+        return '상대 공개를 기다려 주세요';
+      default:
+        return '함께 확인해 볼까요';
+    }
+  })();
 
   if (loading) return <LoadingBlock />;
 
@@ -217,16 +247,15 @@ export default function VerifyHubPage() {
       {!room ? (
         <>
           <section className="stack">
-            <h1 className="hero-title">다음 할 일: 우리 공간 만들기</h1>
-            <p className="muted">
-              공간을 만든 뒤 상대방을 초대하면, 두 사람이 같은 기준으로 확인을
-              시작합니다.
+            <h1 className="hero-title">커플 공간을 만들어 주세요</h1>
+            <p className="hub-status">
+              커플 공간을 만들거나 초대받았어요로 가 주세요
             </p>
           </section>
 
           <section className="card card-soft stack">
             <button className="btn btn-primary" onClick={createRoom} disabled={busy}>
-              우리의 공간 만들기
+              커플공간 생성
             </button>
             <Link className="btn btn-secondary" href="/invite">
               초대받았어요
@@ -238,10 +267,9 @@ export default function VerifyHubPage() {
       {room?.status === 'WAITING_PARTNER' ? (
         <>
           <section className="stack">
-            <h1 className="hero-title">다음 할 일: 상대방 초대</h1>
-            <p className="muted">
-              번호·링크·QR 중 편한 방법으로 전달하세요. 만료 전에 재발급할 수
-              있습니다.
+            <h1 className="hero-title">상대방을 초대해 주세요</h1>
+            <p className="hub-status">
+              번호·링크·QR 중 편한 방법으로 전달해 주세요.
             </p>
             <AvatarPair
               left={{
@@ -303,9 +331,9 @@ export default function VerifyHubPage() {
         <>
           <section className="stack">
             <h1 className="hero-title">{activeTitle}</h1>
-            <p className="muted">
+            <p className="hub-status">
               {verifyComplete
-                ? '보고서를 다시 보거나, 우리의 약속으로 이어갈 수 있어요.'
+                ? '결과를 다시 보거나, 우리의 약속으로 이어갈 수 있어요.'
                 : `${partnerLabel}님과 연결되었습니다.`}
             </p>
             <AvatarPair
@@ -329,9 +357,22 @@ export default function VerifyHubPage() {
 
           <section className="card card-soft stack">
             {journey?.cta ? (
-              <Link className="btn btn-primary" href={journey.cta.href}>
-                {verifyComplete ? '보고서 보기' : journey.cta.label}
-              </Link>
+              journey.ctaDisabled ? (
+                <>
+                  <button className="btn btn-primary" type="button" disabled>
+                    {journey.cta.label}
+                  </button>
+                  {journey.statusMessage ? (
+                    <p className="muted" style={{ textAlign: 'center', margin: 0 }}>
+                      {journey.statusMessage}
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <Link className="btn btn-primary" href={journey.cta.href}>
+                  {verifyComplete ? '결과 보기' : journey.cta.label}
+                </Link>
+              )
             ) : (
               <Link className="btn btn-primary" href="/scope">
                 확인 항목 선택하기
@@ -353,7 +394,11 @@ export default function VerifyHubPage() {
         <div className="modal-backdrop" role="presentation">
           <div className="modal-card stack" role="dialog" aria-modal="true">
             <strong>서로에 대한 확인이 끝났어요</strong>
-            <p className="muted">이제 우리의 약속을 만들어 보세요.</p>
+            <p className="muted">
+              우리의 약속 기능이 열렸어요. 이 공간은 <strong>무료 구독 중</strong>이라
+              평생 무료로 사용할 수 있어요.
+            </p>
+            <p className="muted">이제 첫 약속을 만들어 보세요.</p>
             <label className="check-row">
               <input
                 type="checkbox"
@@ -375,6 +420,7 @@ export default function VerifyHubPage() {
           </div>
         </div>
       ) : null}
+      <BottomNav />
     </main>
   );
 }

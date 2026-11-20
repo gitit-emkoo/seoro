@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { SUBMISSION_STATUS_LABEL, type SubmissionStatus } from '@seoro/shared';
 import { BackButton, BrandMark } from '@/components/ui';
 import { api, getToken } from '@/lib/api';
+import { fetchJourneyStatus, markMutualResultSeen } from '@/lib/progress';
 
 type ReportItem = {
   title: string;
@@ -88,6 +89,8 @@ export default function ReportsPage() {
   const [mutual, setMutual] = useState<Mutual | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showSharedModal, setShowSharedModal] = useState(false);
+  const [ready, setReady] = useState(false);
 
   async function load() {
     const [myReport, disc] = await Promise.all([
@@ -97,17 +100,36 @@ export default function ReportsPage() {
     setReport(myReport);
     setDisclosure(disc);
 
+    const consented =
+      disc.members.find((m) => m.isMe)?.status === 'CONSENTED';
+
     if (!myReport.allSubmitted) {
       setMutual(null);
-      return;
+      setReady(true);
+      return { myReport, disc, consented: false as boolean };
     }
 
     if (disc.mutualReady) {
       const mutualReport = await api<Mutual>('/api/reports/mutual');
       setMutual(mutualReport);
-    } else {
-      setMutual(null);
+      const status = await fetchJourneyStatus();
+      if (status?.coupleRoomId) {
+        markMutualResultSeen(status.coupleRoomId);
+      }
+      setReady(true);
+      return { myReport, disc, consented: true };
     }
+
+    setMutual(null);
+
+    // 나만 공유한 상태면 결과 페이지에 머물지 않음
+    if (consented && !showSharedModal) {
+      router.replace('/home');
+      return { myReport, disc, consented: true };
+    }
+
+    setReady(true);
+    return { myReport, disc, consented };
   }
 
   useEffect(() => {
@@ -115,7 +137,11 @@ export default function ReportsPage() {
       router.replace('/login');
       return;
     }
-    void load().catch((err) => setError(err instanceof Error ? err.message : '불러오기 실패'));
+    void load().catch((err) => {
+      setError(err instanceof Error ? err.message : '불러오기 실패');
+      setReady(true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   async function consent() {
@@ -123,9 +149,9 @@ export default function ReportsPage() {
     setError('');
     try {
       await api('/api/disclosure/consent', { method: 'POST' });
-      await load();
+      setShowSharedModal(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '공개 동의 실패');
+      setError(err instanceof Error ? err.message : '결과 공유에 실패했습니다.');
     } finally {
       setBusy(false);
     }
@@ -139,6 +165,19 @@ export default function ReportsPage() {
   const myConsented =
     disclosure?.members.find((m) => m.isMe)?.status === 'CONSENTED';
   const mutualReady = Boolean(disclosure?.mutualReady);
+
+  if (!ready && !showSharedModal) {
+    return (
+      <main className="shell stack-lg">
+        <div className="topbar">
+          <BackButton href="/home" />
+          <BrandMark />
+          <span style={{ width: 42 }} />
+        </div>
+        <p className="muted">불러오는 중…</p>
+      </main>
+    );
+  }
 
   return (
     <main className="shell stack-lg">
@@ -157,7 +196,7 @@ export default function ReportsPage() {
         <section className="card stack">
           <strong>합의 항목을 모두 제출해 주세요</strong>
           <p className="muted">
-            모든 자료를 첨부한 뒤에 내 보고서를 확인하고, 상대방에게 공개할 수 있어요.
+            모든 자료를 첨부한 뒤에 내 결과를 확인하고, 상대방과 공유할 수 있어요.
             {pendingTitles.length ? ` 남은 항목: ${pendingTitles.join(', ')}` : ''}
           </p>
           <Link className="btn btn-primary" href="/submissions">
@@ -172,7 +211,7 @@ export default function ReportsPage() {
           <PersonSection title="나의 결과" person={mutual.me} />
           <p className="muted">{mutual.note}</p>
         </>
-      ) : (
+      ) : !myConsented || showSharedModal ? (
         <>
           <section className="stack">
             <div className="section-head">
@@ -190,45 +229,44 @@ export default function ReportsPage() {
             ))}
           </section>
 
-          {!myConsented ? (
+          {!myConsented && !showSharedModal ? (
             <section className="card stack">
-              <strong>상대방에게 결과 공개</strong>
-              <p className="muted">양측이 모두 동의한 뒤에만 서로의 결과를 볼 수 있어요.</p>
-              {disclosure?.members.map((m) => (
-                <div className="list-card" key={m.userId}>
-                  <div className="icon-bubble">{m.status === 'CONSENTED' ? '✓' : '…'}</div>
-                  <div className="label">
-                    {m.name || m.email}
-                    {m.isMe ? ' (나)' : ''}
-                  </div>
-                  <span className="muted">
-                    {m.status === 'CONSENTED' ? '공개 동의' : '대기'}
-                  </span>
-                </div>
-              ))}
+              <strong>결과 공유</strong>
+              <p className="muted">양쪽이 모두 공유해야 서로의 결과를 볼 수 있어요.</p>
               <button className="btn btn-primary" disabled={busy} onClick={() => void consent()}>
-                {busy ? '처리 중…' : '내 결과 공개에 동의'}
+                {busy ? '처리 중…' : '결과 공유'}
               </button>
             </section>
-          ) : (
-            <section className="card stack">
-              <strong>상대방 공개를 기다리는 중</strong>
-              <p className="muted">
-                나의 공개는 완료됐어요. 상대방도 공개하면 서로의 결과를 볼 수 있습니다.
-              </p>
-            </section>
-          )}
+          ) : null}
         </>
-      )}
+      ) : null}
 
       {error ? <p className="error">{error}</p> : null}
-      <Link className="btn btn-ghost" href="/home">
-        서로확인 메인으로
-      </Link>
+      {!showSharedModal ? (
+        <Link className="btn btn-ghost" href="/home">
+          서로확인 메인으로
+        </Link>
+      ) : null}
       {mutualReady ? (
         <Link className="btn btn-secondary" href="/app">
           앱 홈으로
         </Link>
+      ) : null}
+
+      {showSharedModal ? (
+        <div className="modal-backdrop" role="presentation">
+          <div className="modal-card stack" role="dialog" aria-modal="true">
+            <strong style={{ fontSize: '1.15rem' }}>내 결과 공유가 완료됐어요</strong>
+            <p className="muted">상대방도 공유하면 서로의 결과를 확인할 수 있어요.</p>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={() => router.push('/home')}
+            >
+              확인
+            </button>
+          </div>
+        </div>
       ) : null}
     </main>
   );

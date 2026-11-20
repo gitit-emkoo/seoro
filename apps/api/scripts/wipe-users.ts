@@ -10,6 +10,7 @@ async function main() {
   console.log('USER accounts to remove:', users);
 
   // 커플 진행 데이터부터 정리 (FK 순서)
+  await prisma.couplePromise.deleteMany({});
   await prisma.verificationRecord.deleteMany({});
   await prisma.submission.deleteMany({});
   await prisma.payment.deleteMany({});

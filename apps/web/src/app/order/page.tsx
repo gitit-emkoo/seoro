@@ -122,6 +122,8 @@ export default function OrderPage() {
   }
 
   const myPayment = order?.payments.find((p) => p.userId === meId);
+  const perPersonAmount =
+    order?.perPersonAmount ?? plans[0]?.perPersonAmount ?? null;
 
   return (
     <main className="shell stack-lg">
@@ -133,8 +135,12 @@ export default function OrderPage() {
       <ProgressSteps current="pay" />
 
       <section className="stack">
-        <h1 className="hero-title">다음 할 일: 내 몫 결제</h1>
-        <p className="muted">양측이 각자 결제해야 자료 제출이 시작됩니다. (목업)</p>
+        <h1 className="hero-title">결제하기</h1>
+        <p className="muted">
+          {perPersonAmount != null
+            ? `1/N ${perPersonAmount.toLocaleString()}원 각 결제가 진행됩니다`
+            : '1/N 각 결제가 진행됩니다'}
+        </p>
       </section>
 
       {!order ? (
@@ -146,27 +152,24 @@ export default function OrderPage() {
           ) : null}
           {plans.map((plan) => (
             <div className="card stack" key={plan.id}>
-              <strong>{plan.name}</strong>
-              <p className="muted">
-                총 {plan.totalAmount.toLocaleString()}원 · 1인{' '}
-                {plan.perPersonAmount.toLocaleString()}원
-              </p>
+              <strong>서로확인 {plan.name}</strong>
+              <p className="muted">포함 혜택(디지털 인증 약속 평생 무료)</p>
+              <p className="muted">{plan.totalAmount.toLocaleString()}원</p>
               <button
                 className="btn btn-primary"
                 disabled={busy}
                 onClick={() => void createOrder(plan.id)}
               >
-                이 상품으로 주문
+                결제하기
               </button>
             </div>
           ))}
         </section>
       ) : (
         <section className="card stack">
-          <strong>{order.productPlan.name}</strong>
-          <p className="muted">
-            커플 총액 {order.totalAmount.toLocaleString()}원 · 주문 상태 {order.status}
-          </p>
+          <strong>서로확인 {order.productPlan.name}</strong>
+          <p className="muted">포함 혜택(디지털 인증 약속 평생 무료)</p>
+          <p className="muted">{order.totalAmount.toLocaleString()}원</p>
           {order.payments.map((p) => (
             <div className="list-card" key={p.id}>
               <div className="icon-bubble">{p.status === 'PAID' ? '✓' : '…'}</div>
@@ -184,7 +187,7 @@ export default function OrderPage() {
             <p className="muted">나의 결제 완료 · 상대방 결제 대기</p>
           ) : (
             <button className="btn btn-primary" disabled={busy} onClick={() => void mockPay()}>
-              {busy ? '처리 중…' : `내 몫 결제하기 (목업 ${order.perPersonAmount.toLocaleString()}원)`}
+              {busy ? '처리 중…' : `1/N 결제 (${order.perPersonAmount.toLocaleString()}원)`}
             </button>
           )}
           <button className="btn btn-secondary" type="button" onClick={() => void refresh()}>
