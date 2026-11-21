@@ -137,6 +137,7 @@ model User {
   disclosureConsents  DisclosureConsent[]
   authoredPromises    CouplePromise[]      @relation("PromiseAuthor")
   partnerPromises     CouplePromise[]      @relation("PromisePartner")
+  emotionDiaries      EmotionDiary[]
   adminLogs           AdminAuditLog[]      @relation("AdminActor")
   verificationReviews VerificationRecord[] @relation("VerificationReviewer")
   onboardingSurvey    OnboardingSurvey?
@@ -186,6 +187,7 @@ model CoupleRoom {
   submissions        Submission[]
   disclosureConsents DisclosureConsent[]
   promises           CouplePromise[]
+  emotionDiaries     EmotionDiary[]
 
   @@index([createdById])
   @@index([status])
@@ -457,4 +459,24 @@ model CouplePromise {
   @@index([coupleRoomId, status])
   @@index([authorId])
   @@index([partnerId])
+}
+
+/// 감정 일기 (커플 ACTIVE 후 사용, 상대에게는 코멘트 비공개)
+model EmotionDiary {
+  id           String     @id @default(cuid())
+  coupleRoomId String
+  coupleRoom   CoupleRoom @relation(fields: [coupleRoomId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// KST 기준 YYYY-MM-DD
+  entryDate    String
+  emotionCode  String
+  triggerCodes String[]
+  comment      String     @default("")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([coupleRoomId, userId, entryDate])
+  @@index([coupleRoomId, entryDate])
+  @@index([userId])
 }

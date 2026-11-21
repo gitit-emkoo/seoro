@@ -60,6 +60,7 @@ export const API_PATHS = {
   disclosureMe: '/api/disclosure/me',
   promises: '/api/promises',
   promisesVerify: '/api/promises/verify',
+  diaries: '/api/diaries',
 } as const;
 
 export const SUBMISSION_STATUS_LABEL: Record<SubmissionStatus, string> = {

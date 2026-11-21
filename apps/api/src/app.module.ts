@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { CouplesModule } from './couples/couples.module';
+import { DiariesModule } from './diaries/diaries.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { OrdersModule } from './orders/orders.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -27,6 +28,7 @@ import { SubmissionsModule } from './submissions/submissions.module';
     SubmissionsModule,
     ReportsModule,
     PromisesModule,
+    DiariesModule,
     AdminModule,
   ],
   controllers: [AppController],

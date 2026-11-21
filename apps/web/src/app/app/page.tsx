@@ -103,6 +103,18 @@ export default function AppHomePage() {
       </section>
 
       <section className="stack">
+        {room?.status === 'ACTIVE' ? (
+          <Link className="card card-soft stack" href="/diary">
+            <strong>감정 일기</strong>
+            <p className="muted">오늘의 감정을 남기고, 상대의 기분은 요약으로 함께 봐요</p>
+          </Link>
+        ) : (
+          <div className="card stack">
+            <strong>감정 일기</strong>
+            <p className="muted">커플이 연결되면 열립니다.</p>
+          </div>
+        )}
+
         {unlocked ? (
           <Link className="card card-soft stack" href="/promises">
             <strong>우리의 약속</strong>

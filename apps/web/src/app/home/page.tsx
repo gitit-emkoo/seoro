@@ -342,6 +342,9 @@ export default function VerifyHubPage() {
                 우리의 약속 열기
               </Link>
             ) : null}
+            <Link className="btn btn-secondary" href="/diary">
+              감정 일기 쓰기
+            </Link>
           </section>
         </>
       ) : null}
