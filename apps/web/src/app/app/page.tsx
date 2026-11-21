@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AvatarPair, BrandMark } from '@/components/ui';
+import { BottomNav } from '@/components/BottomNav';
 import { ErrorBlock, LoadingBlock } from '@/components/StateBlock';
 import { api, getToken, setToken } from '@/lib/api';
 import { fetchJourneyStatus, type JourneyStatus } from '@/lib/progress';
@@ -54,7 +55,7 @@ export default function AppHomePage() {
 
   function logout() {
     setToken(null);
-    router.replace('/');
+    router.replace('/login');
   }
 
   if (loading) return <LoadingBlock />;
@@ -116,27 +117,26 @@ export default function AppHomePage() {
         )}
 
         {unlocked ? (
-          <Link className="card card-soft stack" href="/promises">
+          <Link className="card feature-card" href="/promises">
             <strong>우리의 약속</strong>
             <p className="muted">약속을 만들고 전자서명 기록으로 쌓아가요</p>
+            <span className="sub-badge">무료 구독 중</span>
           </Link>
         ) : (
-          <div className="card stack">
+          <div className="card feature-card feature-card--locked">
             <strong>우리의 약속</strong>
             <p className="muted">서로 확인을 마치면 열립니다.</p>
-            <button className="btn btn-primary" type="button" disabled>
-              잠김
-            </button>
           </div>
         )}
 
-        <Link className="card stack" href="/home">
+        <Link className="card secondary-card" href="/home">
           <strong>서로 확인</strong>
-          <p className="muted">확인이 완료됐어요 언제든 다시 볼 수 있어요</p>
+          <p className="muted">확인이 완료됐어요. 언제든 다시 볼 수 있어요</p>
         </Link>
       </section>
 
       {error ? <ErrorBlock message={error} /> : null}
+      <BottomNav />
     </main>
   );
 }

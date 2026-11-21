@@ -57,7 +57,8 @@ export class OnboardingService {
 
   /**
    * 서버 기준 다음 단계 + 서로공개 허브용 상태.
-   * path: 로그인/재접속 시 보낼 기본 경로
+   * path: 로그인/재접속 시 보낼 기본 경로 (서로확인 진행 중에는 허브 /home,
+   *       실제 단계는 cta.href 로 사용자가 직접 진입)
    */
   async resolveNextPath(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -129,7 +130,7 @@ export class OnboardingService {
       });
       if (!mySelection || mySelection.status !== 'SUBMITTED') {
         return {
-          path: '/scope',
+          path: '/home',
           reason: 'NEED_SCOPE_SELECTION',
           verifyStep: 'scope' as VerifyStep,
           verifyComplete: false,
@@ -139,7 +140,7 @@ export class OnboardingService {
         };
       }
       return {
-        path: '/scope/compare',
+        path: '/home',
         reason: 'NEED_SCOPE_AGREEMENT',
         verifyStep: 'scope' as VerifyStep,
         verifyComplete: false,
@@ -159,7 +160,7 @@ export class OnboardingService {
     });
     if (!order || order.status !== 'PAID') {
       return {
-        path: '/order',
+        path: '/home',
         reason: 'NEED_PAYMENT',
         verifyStep: 'pay' as VerifyStep,
         verifyComplete: false,
@@ -177,7 +178,7 @@ export class OnboardingService {
     );
     if (needSubmit) {
       return {
-        path: '/submissions',
+        path: '/home',
         reason: 'NEED_SUBMISSION',
         verifyStep: 'submit' as VerifyStep,
         verifyComplete: false,
@@ -197,7 +198,7 @@ export class OnboardingService {
     });
     if (!consent || consent.status !== 'CONSENTED') {
       return {
-        path: '/reports',
+        path: '/home',
         reason: 'NEED_DISCLOSURE',
         verifyStep: 'report' as VerifyStep,
         verifyComplete: false,
@@ -225,7 +226,7 @@ export class OnboardingService {
         verifyComplete: true,
         mutualReady: true,
         promiseUnlocked: true,
-        cta: { label: '보고서 보기', href: '/reports' },
+        cta: { label: '결과 보기', href: '/reports' },
         coupleRoomId: membership.coupleRoomId,
       };
     }
@@ -237,7 +238,9 @@ export class OnboardingService {
       verifyComplete: false,
       mutualReady: false,
       promiseUnlocked: false,
-      cta: { label: '결과 확인하기', href: '/reports' },
+      cta: { label: '결과 보기', href: '/reports' },
+      ctaDisabled: true,
+      statusMessage: '상대방 공개를 기다리는 중이에요',
       coupleRoomId: membership.coupleRoomId,
     };
   }

@@ -12,7 +12,7 @@ import {
   type SurveyAnswers,
 } from '@/lib/onboarding';
 
-type Step = 0 | 1 | 2 | 3 | 'done';
+type Step = 0 | 'done';
 
 export default function OnboardingSurveyPage() {
   const router = useRouter();
@@ -33,38 +33,15 @@ export default function OnboardingSurveyPage() {
     if (local.answers) setAnswers(local.answers);
   }, [router]);
 
-  const question = step === 'done' ? null : SURVEY_QUESTIONS[step];
-  const progress = step === 'done' ? 4 : step + 1;
+  const question = step === 'done' ? null : SURVEY_QUESTIONS[0];
 
   const canContinue = useMemo(() => {
-    if (step === 'done' || !question) return true;
-    if (question.multi) return true;
-    if (question.id === 'q3') return Boolean(answers.q3);
-    if (question.id === 'q4') return Boolean(answers.q4);
-    return true;
-  }, [answers.q3, answers.q4, question, step]);
+    if (step === 'done') return true;
+    return Boolean(answers.q3);
+  }, [answers.q3, step]);
 
-  function toggleMulti(id: 'q1' | 'q2', code: string) {
-    setAnswers((prev) => {
-      const list = prev[id];
-      // Q2: "특별히 궁금한 것은 없어요"는 단독 선택
-      if (id === 'q2' && code === 'Q2_NONE') {
-        return { ...prev, q2: list.includes(code) ? [] : ['Q2_NONE'] };
-      }
-      if (id === 'q2') {
-        const withoutNone = list.filter((c) => c !== 'Q2_NONE');
-        const next = withoutNone.includes(code)
-          ? withoutNone.filter((c) => c !== code)
-          : [...withoutNone, code];
-        return { ...prev, q2: next };
-      }
-      const next = list.includes(code) ? list.filter((c) => c !== code) : [...list, code];
-      return { ...prev, [id]: next };
-    });
-  }
-
-  function selectSingle(id: 'q3' | 'q4', code: string) {
-    setAnswers((prev) => ({ ...prev, [id]: code }));
+  function selectAnswer(code: string) {
+    setAnswers((prev) => ({ ...prev, q3: code }));
   }
 
   function persist(nextAnswers: SurveyAnswers) {
@@ -79,23 +56,15 @@ export default function OnboardingSurveyPage() {
 
   function goNext() {
     persist(answers);
-    if (step === 3) {
-      setStep('done');
-      return;
-    }
-    if (step !== 'done') setStep((step + 1) as Step);
+    setStep('done');
   }
 
   function goPrev() {
     if (step === 'done') {
-      setStep(3);
+      setStep(0);
       return;
     }
-    if (step === 0) {
-      router.push('/onboarding');
-      return;
-    }
-    setStep((step - 1) as Step);
+    router.push('/onboarding');
   }
 
   function continueAuth(mode: 'register' | 'login') {
@@ -149,11 +118,6 @@ export default function OnboardingSurveyPage() {
 
   if (!question) return null;
 
-  const selectedMulti =
-    question.id === 'q1' || question.id === 'q2' ? answers[question.id] : [];
-  const selectedSingle =
-    question.id === 'q3' || question.id === 'q4' ? answers[question.id] : null;
-
   return (
     <main className="shell stack-lg ob-page">
       <div className="topbar">
@@ -163,15 +127,9 @@ export default function OnboardingSurveyPage() {
         </Link>
       </div>
 
-      <div className="ob-progress" aria-label={`질문 ${progress} / 4`}>
-        {SURVEY_QUESTIONS.map((q, i) => (
-          <span
-            key={q.id}
-            className={i <= step ? 'ob-dot ob-dot-on' : 'ob-dot'}
-            aria-hidden
-          />
-        ))}
-        <span className="ob-progress-label">{progress}/4</span>
+      <div className="ob-progress" aria-label="질문 1 / 1">
+        <span className="ob-dot ob-dot-on" aria-hidden />
+        <span className="ob-progress-label">1/1</span>
       </div>
 
       <section className="stack ob-survey-q">
@@ -181,21 +139,13 @@ export default function OnboardingSurveyPage() {
 
       <section className="stack">
         {question.options.map((opt) => {
-          const on = question.multi
-            ? selectedMulti.includes(opt.code)
-            : selectedSingle === opt.code;
+          const on = answers.q3 === opt.code;
           return (
             <button
               key={opt.code}
               type="button"
               className={on ? 'ob-choice ob-choice-on' : 'ob-choice'}
-              onClick={() => {
-                if (question.multi) {
-                  toggleMulti(question.id as 'q1' | 'q2', opt.code);
-                } else {
-                  selectSingle(question.id as 'q3' | 'q4', opt.code);
-                }
-              }}
+              onClick={() => selectAnswer(opt.code)}
             >
               <span className="ob-choice-mark" aria-hidden>
                 {on ? '✓' : ''}
@@ -212,7 +162,7 @@ export default function OnboardingSurveyPage() {
         disabled={!canContinue}
         onClick={goNext}
       >
-        {step === 3 ? '완료' : '다음'}
+        다음
       </button>
       <button className="btn btn-ghost" type="button" onClick={goPrev}>
         이전

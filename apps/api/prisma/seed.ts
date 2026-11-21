@@ -11,8 +11,8 @@ async function main() {
   const items = [
     {
       code: 'IDENTITY',
-      title: '본인 신원',
-      description: '본인 확인에 필요한 기본 신원 정보',
+      title: '본인 확인',
+      description: '본인 확인에 필요한 기본 정보',
       category: 'identity',
       requiredDocumentType: '신분증 사본',
       verificationMethod: 'MANUAL_REVIEW',

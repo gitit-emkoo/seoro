@@ -51,15 +51,25 @@ export default function ScopePage() {
     ]);
     setItems(itemList);
     setPlans(planList);
+
+    const basic = planList.find((p) => p.code === 'BASIC') ?? planList[0];
+    const basicIds = new Set(
+      (planList.find((p) => p.code === 'BASIC')?.items ?? []).map(
+        (i) => i.verificationItem.id,
+      ),
+    );
+
     if (me.selection?.itemIds?.length) {
-      setSelected(me.selection.itemIds);
+      const itemIds = me.selection.itemIds;
+      setSelected(itemIds);
       setSelectionStatus(me.selection.status ?? null);
-    } else if (planList[0]) {
-      const basic = planList.find((p) => p.code === 'BASIC') ?? planList[0];
+      const hasExtendedOnly = itemIds.some((id) => !basicIds.has(id));
+      setPlanCode(hasExtendedOnly ? 'EXTENDED' : 'BASIC');
+    } else if (basic) {
       setSelected(basic.items.map((i) => i.verificationItem.id));
+      setPlanCode(basic.code === 'EXTENDED' ? 'EXTENDED' : 'BASIC');
       setSelectionStatus(null);
     }
-    if (me.selection?.planCode) setPlanCode(me.selection.planCode);
   }
 
   useEffect(() => {
@@ -83,10 +93,21 @@ export default function ScopePage() {
     setSelected(plan.items.map((i) => i.verificationItem.id));
   }
 
+  function resolvePlanCode(itemIds: string[]): 'BASIC' | 'EXTENDED' {
+    const basic = plans.find((p) => p.code === 'BASIC');
+    if (!basic) return planCode;
+
+    const basicIds = new Set(basic.items.map((i) => i.verificationItem.id));
+    const hasExtendedOnly = itemIds.some((id) => !basicIds.has(id));
+    return hasExtendedOnly ? 'EXTENDED' : 'BASIC';
+  }
+
   function toggle(id: string) {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    const next = selected.includes(id)
+      ? selected.filter((x) => x !== id)
+      : [...selected, id];
+    setSelected(next);
+    setPlanCode(resolvePlanCode(next));
   }
 
   async function submit() {
@@ -135,12 +156,12 @@ export default function ScopePage() {
 
       <section className="stack">
         <h1 className="hero-title">
-          {isSubmitted ? '선택 수정하기' : '다음 할 일: 확인 항목 선택'}
+          {isSubmitted ? '선택 수정하기' : '확인 항목 선택'}
         </h1>
         <p className="muted">
           {isSubmitted
             ? '이미 선택 완료된 상태입니다. 항목을 바꾼 뒤 다시 저장하거나, 선택을 취소할 수 있어요. 바꾸면 기존 합의는 다시 받아야 합니다.'
-            : '상대방과 같은 기준으로 진행돼요. 지금은 나만의 선택을 남겨 주세요.'}
+            : '기본형 또는 확장형을 선택할 수 있습니다.'}
         </p>
       </section>
 
@@ -167,19 +188,28 @@ export default function ScopePage() {
           <button
             key={plan.id}
             type="button"
-            className={`card card-row ${planCode === plan.code ? 'card-soft' : ''}`}
+            className={`card card-row ${planCode === plan.code ? 'card-selected' : ''}`}
             onClick={() => applyPlan(plan.code)}
             style={{ textAlign: 'left', cursor: 'pointer', width: '100%' }}
+            aria-pressed={planCode === plan.code}
           >
             <div className="icon-bubble">{plan.code === 'BASIC' ? '①' : '②'}</div>
-            <div style={{ flex: 1 }}>
-              <strong>{plan.name}</strong>
-              <p className="muted">{plan.description}</p>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <strong>
+                {plan.code === 'BASIC' ? '기본형(핵심항목)' : '확장형(추가항목)'}
+              </strong>
+              <p className="muted">+약속디지털인증(평생무료)</p>
               <p className="muted">
                 1인 {plan.perPersonAmount.toLocaleString()}원 · 총{' '}
                 {plan.totalAmount.toLocaleString()}원
               </p>
             </div>
+            {plan.code === 'BASIC' ? (
+              <span className="plan-pick-badge" aria-label="2,000명 이상의 커플이 선택">
+                <span className="plan-pick-badge__num">2,000+</span>
+                <span className="plan-pick-badge__label">커플 선택</span>
+              </span>
+            ) : null}
           </button>
         ))}
       </section>

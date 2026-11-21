@@ -13,15 +13,28 @@ export class ApiError extends Error {
   }
 }
 
+const TOKEN_KEY = 'seoro_token';
+const KNOWN_USER_KEY = 'seoro_known_user';
+
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('seoro_token');
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+/** 이 기기에서 한 번이라도 로그인/가입한 적 있는지 (로그아웃 후에도 유지) */
+export function isKnownUser(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(KNOWN_USER_KEY) === '1';
 }
 
 export function setToken(token: string | null) {
   if (typeof window === 'undefined') return;
-  if (token) localStorage.setItem('seoro_token', token);
-  else localStorage.removeItem('seoro_token');
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(KNOWN_USER_KEY, '1');
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+  }
 }
 
 type ApiOptions = {

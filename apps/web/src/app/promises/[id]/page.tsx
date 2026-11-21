@@ -203,8 +203,8 @@ export default function PromiseDetailPage() {
                   : '-'}
               </p>
               {row.documentCode ? (
-                <Link className="btn btn-secondary" href={`/promises/verify/${row.documentCode}`}>
-                  인증 확인 페이지
+                <Link className="btn btn-secondary" href={`/promises/export/${row.documentCode}`}>
+                  내보내기
                 </Link>
               ) : null}
             </div>
@@ -270,7 +270,7 @@ export default function PromiseDetailPage() {
             type="button"
             onClick={() => setPartnerMode('sign')}
           >
-            이대로 서명
+            서명하기
           </button>
           <button
             className="btn btn-secondary"

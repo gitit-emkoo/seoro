@@ -111,9 +111,6 @@ export default function OnboardingCardsPage() {
     <main className="shell stack-lg ob-page">
       <div className="topbar">
         <BrandMark />
-        <Link className="btn-chip btn" href="/login">
-          로그인
-        </Link>
       </div>
 
       <div className="ob-progress" aria-label={`진행 ${index + 1} / ${cards.length}`}>
@@ -205,11 +202,6 @@ export default function OnboardingCardsPage() {
           <section className="ob-cta stack">
             <div>
               <strong className="ob-cta-title">우리의 이야기를 시작해 볼까요?</strong>
-              <p className="muted">
-                몇 가지 질문으로
-                <br />
-                서로를 확인하는 것에 대한 생각을 알아볼게요.
-              </p>
             </div>
             <button
               className="btn btn-primary"

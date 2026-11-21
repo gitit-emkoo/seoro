@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { decodeUploadFileName } from '../common/filename.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { LoginDto } from './dto/login.dto';
@@ -171,7 +172,7 @@ export class AuthService {
 
     const stored = await this.storage.savePrivate(
       userId,
-      file.originalname || 'avatar.jpg',
+      decodeUploadFileName(file.originalname || 'avatar.jpg'),
       file.buffer,
     );
 
