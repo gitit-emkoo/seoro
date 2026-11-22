@@ -23,6 +23,7 @@ export default function PromiseCreatePage() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [condition, setCondition] = useState('');
+  const [showCondition, setShowCondition] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -69,80 +70,89 @@ export default function PromiseCreatePage() {
   if (!ready) return <LoadingBlock />;
 
   return (
-    <main className="shell stack-lg">
+    <main className="shell promise-compose">
       <div className="topbar">
         <BackButton href="/promises" />
         <BrandMark />
         <span style={{ width: 42 }} />
       </div>
 
-      <section className="stack">
-        <h1 className="hero-title">약속 만들기</h1>
-        <p className="muted">작성 후 서명하면 상대방에게 전달됩니다.</p>
-      </section>
+      <article className="promise-compose__sheet promise-enter">
+        <div className="promise-chip-row" role="listbox" aria-label="카테고리">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c}
+              type="button"
+              role="option"
+              aria-selected={category === c}
+              className={`promise-chip${category === c ? ' is-active' : ''}`}
+              onClick={() => setCategory(c)}
+            >
+              {PROMISE_CATEGORY_LABEL[c]}
+            </button>
+          ))}
+        </div>
 
-      <section className="card stack">
-        <div className="field">
-          <label htmlFor="category">카테고리</label>
-          <select
-            id="category"
-            value={category}
-            onChange={(e) => setCategory(e.target.value as PromiseCategory)}
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {PROMISE_CATEGORY_LABEL[c]}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="title">제목</label>
-          <input
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            placeholder="약속 제목"
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="content">내용</label>
+        <input
+          className="promise-compose__title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="약속 제목을 적어 주세요"
+          aria-label="제목"
+        />
+
+        <textarea
+          className="promise-compose__body"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="함께 지킬 내용을 자유롭게 적어요."
+          rows={7}
+          aria-label="내용"
+        />
+
+        {showCondition ? (
           <textarea
-            id="content"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            required
-            rows={5}
-            placeholder="함께 지킬 약속 내용"
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="condition">미이행 시 조건 (선택)</label>
-          <textarea
-            id="condition"
+            className="promise-compose__condition"
             value={condition}
             onChange={(e) => setCondition(e.target.value)}
+            placeholder="지키지 못했을 때의 조건 (선택)"
             rows={3}
-            placeholder="지키지 못했을 때의 약속/조건"
+            aria-label="미이행 시 조건"
           />
-        </div>
+        ) : (
+          <button
+            type="button"
+            className="promise-compose__add-condition"
+            onClick={() => setShowCondition(true)}
+          >
+            + 미이행 조건 추가
+          </button>
+        )}
 
-        <div className="stack">
-          <strong>서명</strong>
-          <SignaturePad
-            actionLabel={busy ? '전송 중…' : '서명완료 및 전송'}
-            busy={busy}
-            onAction={submitWithSignature}
-          />
+        <div className="promise-compose__signers" aria-hidden>
+          <div className="promise-compose__signer">
+            <span>나</span>
+            <em>서명 예정</em>
+          </div>
+          <div className="promise-compose__signer">
+            <span>상대</span>
+            <em>대기</em>
+          </div>
         </div>
+      </article>
 
+      <section className="promise-compose__dock promise-enter">
+        <p className="promise-compose__dock-label">서명하면 상대에게 전달됩니다</p>
+        <SignaturePad
+          actionLabel={busy ? '전송 중…' : '밀어 서명·전송'}
+          busy={busy}
+          onAction={submitWithSignature}
+        />
         {error ? <p className="error">{error}</p> : null}
+        <Link className="btn btn-ghost" href="/promises">
+          목록으로
+        </Link>
       </section>
-
-      <Link className="btn btn-ghost" href="/promises">
-        목록으로
-      </Link>
     </main>
   );
 }

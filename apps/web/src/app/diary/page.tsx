@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BackButton, BrandMark } from '@/components/ui';
 import { LoadingBlock } from '@/components/StateBlock';
+import { EmotionImagePreview } from '@/components/diary/EmotionImagePreview';
+import { TriggerIcon } from '@/components/diary/TriggerIcon';
 import { api, getToken } from '@/lib/api';
 import {
   EMOTIONS,
@@ -161,7 +163,8 @@ export default function DiaryWritePage() {
                 className={on ? 'diary-trigger diary-trigger-on' : 'diary-trigger'}
                 onClick={() => toggleTrigger(t.code)}
               >
-                {t.label}
+                <TriggerIcon code={t.code} size={20} />
+                <span>{t.label}</span>
               </button>
             );
           })}
@@ -181,15 +184,31 @@ export default function DiaryWritePage() {
       </section>
 
       {emotionCode ? (
-        <div className="card-soft stack">
+        <div className="card stack diary-preview">
           <strong>미리보기</strong>
-          <p className="muted">
-            {emotionMeta(emotionCode).label}
-            {triggerCodes.length
-              ? ` · ${triggerCodes.map(triggerLabel).join(', ')}`
-              : ''}
-          </p>
-          {comment.trim() ? <p style={{ whiteSpace: 'pre-wrap' }}>{comment}</p> : null}
+          <div className="diary-preview-row">
+            <EmotionImagePreview
+              emotionCode={emotionCode}
+              triggerCodes={triggerCodes}
+              seedKey={`preview-${today}-${emotionCode}-${triggerCodes.join(',')}`}
+              size={96}
+            />
+            <div className="stack" style={{ gap: 6 }}>
+              <p className="muted" style={{ margin: 0 }}>
+                {emotionMeta(emotionCode).label}
+                {triggerCodes.length
+                  ? ` · ${triggerCodes.map(triggerLabel).join(', ')}`
+                  : ''}
+              </p>
+              {comment.trim() ? (
+                <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{comment}</p>
+              ) : (
+                <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+                  캘린더에 이 원형 이미지로 표시돼요.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       ) : null}
 

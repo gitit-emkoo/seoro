@@ -1,8 +1,19 @@
-export function LoadingBlock({ message = '불러오는 중…' }: { message?: string }) {
+export function LoadingSpinner({ size = 36 }: { size?: number }) {
   return (
-    <main className="shell">
-      <div className="card stack">
-        <p className="muted">{message}</p>
+    <span
+      className="loading-spinner"
+      style={{ width: size, height: size }}
+      role="status"
+      aria-label="로딩 중"
+    />
+  );
+}
+
+export function LoadingBlock(_props?: { message?: string }) {
+  return (
+    <main className="shell loading-shell">
+      <div className="loading-panel">
+        <LoadingSpinner />
       </div>
     </main>
   );

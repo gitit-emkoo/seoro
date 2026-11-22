@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
 import { BackButton, BrandMark } from '@/components/ui';
+import { LoadingSpinner } from '@/components/StateBlock';
 import { api, getToken } from '@/lib/api';
 
 type VerifyResult = {
@@ -165,7 +166,9 @@ export default function PromiseExportPage() {
           </div>
         </section>
       ) : !error ? (
-        <p className="muted">불러오는 중…</p>
+        <div className="loading-panel" style={{ padding: '32px 0' }}>
+          <LoadingSpinner />
+        </div>
       ) : null}
 
       <section className="stack no-print">

@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { SlideToConfirm } from '@/components/SlideToConfirm';
 
 /**
- * 서명 캔버스 + 단일 액션 버튼.
- * actionLabel 클릭 시 캔버스 이미지를 만들어 onAction에 넘긴다.
- * (서명 완료 / 전송 버튼 중복을 없애기 위함)
+ * 서명 캔버스 + 슬라이드 확정.
+ * 획이 있으면 SlideToConfirm으로 dataUrl을 onAction에 넘긴다.
  */
 export function SignaturePad({
   actionLabel,
@@ -21,6 +21,7 @@ export function SignaturePad({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const [hasStroke, setHasStroke] = useState(false);
+  const canvasH = 180;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -30,15 +31,15 @@ export function SignaturePad({
       const width = parent?.clientWidth || 320;
       const ratio = window.devicePixelRatio || 1;
       canvas.width = width * ratio;
-      canvas.height = 150 * ratio;
+      canvas.height = canvasH * ratio;
       canvas.style.width = `${width}px`;
-      canvas.style.height = '150px';
+      canvas.style.height = `${canvasH}px`;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, width, 150);
-      ctx.strokeStyle = '#2a2430';
+      ctx.fillRect(0, 0, width, canvasH);
+      ctx.strokeStyle = '#222222';
       ctx.lineWidth = 2.2;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -85,7 +86,7 @@ export function SignaturePad({
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
     ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, canvas.clientWidth, 150);
+    ctx.fillRect(0, 0, canvas.clientWidth, canvasH);
     setHasStroke(false);
   }
 
@@ -99,6 +100,11 @@ export function SignaturePad({
   return (
     <div className="signature-pad stack">
       <div className="signature-canvas-wrap">
+        {!hasStroke ? (
+          <span className="signature-guide" aria-hidden>
+            여기에 서명
+          </span>
+        ) : null}
         <canvas
           ref={canvasRef}
           className="signature-canvas"
@@ -108,19 +114,16 @@ export function SignaturePad({
           onPointerLeave={onPointerUp}
         />
       </div>
-      <div className="btn-row">
-        <button
-          className="btn btn-primary"
-          type="button"
-          disabled={!hasStroke || busy}
-          onClick={() => void submit()}
-        >
-          {actionLabel}
-        </button>
-        <button className="btn btn-ghost" type="button" disabled={busy} onClick={clear}>
-          {clearLabel}
-        </button>
-      </div>
+      <SlideToConfirm
+        label={actionLabel}
+        doneLabel="처리 중…"
+        disabled={!hasStroke}
+        busy={busy}
+        onConfirm={submit}
+      />
+      <button className="btn btn-ghost" type="button" disabled={busy} onClick={clear}>
+        {clearLabel}
+      </button>
     </div>
   );
 }

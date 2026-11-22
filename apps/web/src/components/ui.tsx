@@ -156,11 +156,11 @@ export function AvatarPair({
   );
 }
 
-export function BrandMark() {
+export function BrandMark({ wordmark = false }: { wordmark?: boolean }) {
   return (
-    <div className="brand-mark">
+    <div className={wordmark ? 'brand-mark brand-mark--wordmark' : 'brand-mark'}>
       <span className="brand-dot" />
-      서로
+      {wordmark ? 'SEORO' : '서로'}
     </div>
   );
 }

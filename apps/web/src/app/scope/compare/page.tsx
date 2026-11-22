@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BackButton, BrandMark } from '@/components/ui';
+import { LoadingBlock } from '@/components/StateBlock';
 import { api, getToken } from '@/lib/api';
 import { usePolling } from '@/lib/usePolling';
 
@@ -140,11 +141,14 @@ export default function ScopeComparePage() {
   }
 
   if (!data) {
-    return (
-      <main className="shell">
-        <p className="muted">{error || '불러오는 중…'}</p>
-      </main>
-    );
+    if (error) {
+      return (
+        <main className="shell">
+          <p className="error">{error}</p>
+        </main>
+      );
+    }
+    return <LoadingBlock />;
   }
 
   const [memberA, memberB] = data.members;

@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { BackButton, BrandMark } from '@/components/ui';
 import { SignaturePad } from '@/components/SignaturePad';
+import { LoadingBlock } from '@/components/StateBlock';
 import { api, getToken } from '@/lib/api';
 import {
   PROMISE_CATEGORY_LABEL,
@@ -109,109 +110,136 @@ export default function PromiseDetailPage() {
 
   if (doneMessage) {
     return (
-      <main className="shell stack-lg">
-        <div className="topbar">
-          <BackButton href="/promises" />
-          <BrandMark />
-          <span style={{ width: 42 }} />
+      <main className="shell promise-done">
+        <div className="promise-done__mark" aria-hidden>
+          <svg width="36" height="36" viewBox="0 0 24 24">
+            <path
+              d="M5 12.5l4.5 4.5L19 7.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </div>
-        <section className="card stack">
-          <strong>{doneMessage}</strong>
-          <p className="muted">잠시 후 약속 목록으로 이동합니다.</p>
-          <Link className="btn btn-primary" href="/promises">
-            지금 목록으로
-          </Link>
-        </section>
+        <strong className="promise-done__title">{doneMessage}</strong>
+        <p className="muted">잠시 후 약속 목록으로 이동합니다.</p>
+        <Link className="btn btn-primary" href="/promises">
+          지금 목록으로
+        </Link>
       </main>
     );
   }
 
   if (!row || !me) {
-    return (
-      <main className="shell">
-        <p className="muted">{error || '불러오는 중…'}</p>
-      </main>
-    );
+    if (error) {
+      return (
+        <main className="shell">
+          <p className="error">{error}</p>
+        </main>
+      );
+    }
+    return <LoadingBlock />;
   }
 
   const isAuthor = row.authorId === me.id;
   const isPartner = row.partnerId === me.id;
   const canPartnerSign = row.status === 'AWAITING_PARTNER' && isPartner;
   const canAuthorResign = row.status === 'AWAITING_AUTHOR' && isAuthor;
-  const canPartnerEditAgain =
-    row.status === 'AWAITING_AUTHOR' && isPartner;
+  const canPartnerEditAgain = row.status === 'AWAITING_AUTHOR' && isPartner;
   const statusLabel = promiseStatusLabelForMe(row, me.id);
   const editing = partnerMode === 'edit';
+  const signing =
+    (canPartnerSign && partnerMode === 'sign') || canAuthorResign;
 
   return (
-    <main className="shell stack-lg">
+    <main className={`shell stack-lg${signing ? ' promise-signing' : ''}`}>
       <div className="topbar">
         <BackButton href="/promises" />
         <BrandMark />
         <span style={{ width: 42 }} />
       </div>
 
-      <section className="stack">
-        <h1 className="hero-title">{row.title}</h1>
-        <p className="muted">
-          {PROMISE_CATEGORY_LABEL[row.category]} · {statusLabel}
-        </p>
-      </section>
-
       {!editing ? (
-        <section className="card stack">
-          <div>
-            <div className="muted">내용</div>
-            <p style={{ whiteSpace: 'pre-wrap' }}>{row.content}</p>
-          </div>
-          {row.condition ? (
-            <div>
-              <div className="muted">미이행 시 조건</div>
-              <p style={{ whiteSpace: 'pre-wrap' }}>{row.condition}</p>
+        <article className="promise-sheet promise-enter">
+          {row.status === 'COMPLETED' && row.documentCode ? (
+            <div className="promise-stamp" aria-label={`인증번호 ${row.documentCode}`}>
+              <span className="promise-stamp__label">확정</span>
+              <span className="promise-stamp__code">{row.documentCode}</span>
             </div>
           ) : null}
-          <div className="meta">
-            <span>작성자</span>
-            <span>{row.author.name || row.author.email}</span>
+
+          <header className="promise-sheet__head">
+            <p className="promise-sheet__eyebrow">
+              {PROMISE_CATEGORY_LABEL[row.category]}
+            </p>
+            <h1 className="promise-sheet__title">{row.title}</h1>
+            <p className="promise-sheet__status">{statusLabel}</p>
+          </header>
+
+          <div className="promise-sheet__body">
+            <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{row.content}</p>
+            {row.condition ? (
+              <div className="promise-sheet__condition">
+                <span className="muted">미이행 시</span>
+                <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{row.condition}</p>
+              </div>
+            ) : null}
           </div>
-          <div className="meta">
-            <span>상대</span>
-            <span>{row.partner.name || row.partner.email}</span>
+
+          <div className="promise-sign-grid">
+            <div className="promise-sign-cell">
+              <span className="muted">
+                {row.author.name || row.author.email || '작성자'}
+              </span>
+              {row.authorSignature ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  className="promise-sign-img"
+                  src={row.authorSignature}
+                  alt="작성자 서명"
+                />
+              ) : (
+                <div className="promise-sign-empty">서명 대기</div>
+              )}
+            </div>
+            <div className="promise-sign-cell">
+              <span className="muted">
+                {row.partner.name || row.partner.email || '상대'}
+              </span>
+              {row.partnerSignature ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  className="promise-sign-img"
+                  src={row.partnerSignature}
+                  alt="상대 서명"
+                />
+              ) : (
+                <div className="promise-sign-empty">서명 대기</div>
+              )}
+            </div>
           </div>
-          {row.authorSignature ? (
-            <div className="stack">
-              <div className="muted">작성자 서명</div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className="signature-preview" src={row.authorSignature} alt="작성자 서명" />
-            </div>
-          ) : null}
-          {row.partnerSignature ? (
-            <div className="stack">
-              <div className="muted">상대 서명</div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className="signature-preview" src={row.partnerSignature} alt="상대 서명" />
-            </div>
-          ) : null}
-          {row.status === 'COMPLETED' ? (
-            <div className="card-soft stack">
-              <strong>확정된 기록</strong>
-              <p className="muted">인증번호 {row.documentCode}</p>
-              <p className="muted">
+
+          {row.status === 'COMPLETED' && row.documentCode ? (
+            <div className="promise-sheet__actions">
+              <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
                 확정{' '}
                 {row.completedAt
                   ? new Date(row.completedAt).toLocaleString('ko-KR')
                   : '-'}
               </p>
-              {row.documentCode ? (
-                <Link className="btn btn-secondary" href={`/promises/export/${row.documentCode}`}>
-                  내보내기
-                </Link>
-              ) : null}
+              <Link
+                className="btn btn-secondary"
+                href={`/promises/export/${row.documentCode}`}
+              >
+                내보내기
+              </Link>
             </div>
           ) : null}
-        </section>
+        </article>
       ) : (
-        <form className="card stack" onSubmit={onEdit}>
+        <form className="promise-sheet stack" onSubmit={onEdit}>
           <div className="field">
             <label htmlFor="category">카테고리</label>
             <select
@@ -262,9 +290,8 @@ export default function PromiseDetailPage() {
         </form>
       )}
 
-      {/* 받은 쪽: 서명 vs 수정 — 한 번에 하나만 */}
       {canPartnerSign && partnerMode === 'choose' ? (
-        <section className="stack">
+        <section className="stack promise-enter">
           <button
             className="btn btn-primary"
             type="button"
@@ -273,7 +300,7 @@ export default function PromiseDetailPage() {
             서명하기
           </button>
           <button
-            className="btn btn-secondary"
+            className="btn btn-ghost"
             type="button"
             onClick={() => setPartnerMode('edit')}
           >
@@ -283,10 +310,10 @@ export default function PromiseDetailPage() {
       ) : null}
 
       {canPartnerSign && partnerMode === 'sign' ? (
-        <section className="card stack">
+        <section className="promise-sign-stage stack promise-enter">
           <strong>내용 확인 후 서명</strong>
           <SignaturePad
-            actionLabel={busy ? '처리 중…' : '서명완료'}
+            actionLabel={busy ? '처리 중…' : '밀어 서명 확정'}
             busy={busy}
             onAction={submitSignature}
           />
@@ -301,19 +328,17 @@ export default function PromiseDetailPage() {
         </section>
       ) : null}
 
-      {/* 작성자 재서명 */}
       {canAuthorResign ? (
-        <section className="card stack">
+        <section className="promise-sign-stage stack promise-enter">
           <strong>수정본에 재서명</strong>
           <SignaturePad
-            actionLabel={busy ? '처리 중…' : '서명완료'}
+            actionLabel={busy ? '처리 중…' : '밀어 서명 확정'}
             busy={busy}
             onAction={submitSignature}
           />
         </section>
       ) : null}
 
-      {/* 수정 재전송 후, 상대 서명 대기 중에도 다시 수정 가능 */}
       {canPartnerEditAgain && partnerMode === 'choose' ? (
         <button
           className="btn btn-secondary"
@@ -325,9 +350,11 @@ export default function PromiseDetailPage() {
       ) : null}
 
       {error ? <p className="error">{error}</p> : null}
-      <Link className="btn btn-ghost" href="/promises">
-        목록으로
-      </Link>
+      {!signing ? (
+        <Link className="btn btn-ghost" href="/promises">
+          목록으로
+        </Link>
+      ) : null}
     </main>
   );
 }

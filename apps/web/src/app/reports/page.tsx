@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SUBMISSION_STATUS_LABEL, type SubmissionStatus } from '@seoro/shared';
 import { BackButton, BrandMark } from '@/components/ui';
+import { LoadingBlock } from '@/components/StateBlock';
 import { api, getToken } from '@/lib/api';
 import { fetchJourneyStatus, markMutualResultSeen } from '@/lib/progress';
 
@@ -167,16 +168,7 @@ export default function ReportsPage() {
   const mutualReady = Boolean(disclosure?.mutualReady);
 
   if (!ready && !showSharedModal) {
-    return (
-      <main className="shell stack-lg">
-        <div className="topbar">
-          <BackButton href="/home" />
-          <BrandMark />
-          <span style={{ width: 42 }} />
-        </div>
-        <p className="muted">불러오는 중…</p>
-      </main>
-    );
+    return <LoadingBlock />;
   }
 
   return (

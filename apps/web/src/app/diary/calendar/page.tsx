@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BackButton, BrandMark } from '@/components/ui';
 import { LoadingBlock } from '@/components/StateBlock';
+import { EmotionImagePreview } from '@/components/diary/EmotionImagePreview';
+import { TriggerIcon } from '@/components/diary/TriggerIcon';
 import { api, getToken } from '@/lib/api';
 import {
   emotionMeta,
@@ -14,6 +16,13 @@ import {
   type EmotionDiary,
 } from '@/lib/diary';
 import type { CoupleRoom } from '@/lib/types';
+
+function formatDayLabel(date: string) {
+  const [y, m, d] = date.split('-').map(Number);
+  const week = ['일', '월', '화', '수', '목', '금', '토'];
+  const wd = new Date(y, m - 1, d).getDay();
+  return `${m}월 ${d}일 (${week[wd]})`;
+}
 
 export default function DiaryCalendarPage() {
   const router = useRouter();
@@ -81,6 +90,7 @@ export default function DiaryCalendarPage() {
 
   const selectedRows = selectedDate ? byDate.get(selectedDate) ?? [] : [];
   const monthLabel = `${cursor.year}년 ${cursor.month0 + 1}월`;
+  const recordedDays = byDate.size;
 
   function shiftMonth(delta: number) {
     setCursor((prev) => {
@@ -92,7 +102,7 @@ export default function DiaryCalendarPage() {
   if (!ready) return <LoadingBlock message="캘린더를 불러오는 중…" />;
 
   return (
-    <main className="shell stack-lg">
+    <main className="shell diary-cal-page">
       <div className="topbar">
         <BackButton href="/diary" />
         <BrandMark />
@@ -101,21 +111,30 @@ export default function DiaryCalendarPage() {
         </Link>
       </div>
 
-      <section className="stack">
-        <h1 className="hero-title">감정 캘린더</h1>
-        <p className="muted">내 기록과 상대의 감정·트리거를 함께 볼 수 있어요.</p>
-      </section>
-
-      <section className="card stack">
-        <div className="diary-cal-head">
-          <button type="button" className="btn btn-ghost" onClick={() => shiftMonth(-1)}>
-            이전
-          </button>
-          <strong>{monthLabel}</strong>
-          <button type="button" className="btn btn-ghost" onClick={() => shiftMonth(1)}>
-            다음
-          </button>
+      <header className="diary-cal-monthbar">
+        <button
+          type="button"
+          className="diary-cal-nav"
+          onClick={() => shiftMonth(-1)}
+          aria-label="이전 달"
+        >
+          ‹
+        </button>
+        <div className="diary-cal-monthbar__center">
+          <h1 className="diary-cal-month-title">{monthLabel}</h1>
+          <p className="muted diary-cal-month-sub">기록 {recordedDays}일</p>
         </div>
+        <button
+          type="button"
+          className="diary-cal-nav"
+          onClick={() => shiftMonth(1)}
+          aria-label="다음 달"
+        >
+          ›
+        </button>
+      </header>
+
+      <section className="diary-cal-board">
         <div className="diary-cal-weekdays">
           {['일', '월', '화', '수', '목', '금', '토'].map((w) => (
             <span key={w}>{w}</span>
@@ -130,29 +149,41 @@ export default function DiaryCalendarPage() {
             const mine = entries.find((e) => e.isMine);
             const partner = entries.find((e) => !e.isMine);
             const selected = selectedDate === cell.date;
+            const isToday = cell.date === today;
+            const previewSize = mine && partner ? 20 : 28;
             return (
               <button
                 key={cell.date}
                 type="button"
-                className={selected ? 'diary-cal-cell diary-cal-selected' : 'diary-cal-cell'}
+                className={[
+                  'diary-cal-cell',
+                  selected ? 'diary-cal-selected' : '',
+                  isToday ? 'diary-cal-today' : '',
+                  mine || partner ? 'has-entry' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
                 onClick={() => setSelectedDate(cell.date)}
               >
                 <span className="diary-cal-day">{cell.day}</span>
-                <span className="diary-cal-dots">
+                <span className="diary-cal-previews">
                   {mine ? (
-                    <span
-                      className="diary-cal-dot"
-                      style={{ background: emotionMeta(mine.emotionCode).color }}
-                      title="나"
+                    <EmotionImagePreview
+                      emotionCode={mine.emotionCode}
+                      triggerCodes={mine.triggerCodes}
+                      seedKey={`${mine.id}-${mine.entryDate}`}
+                      size={previewSize}
                     />
                   ) : null}
                   {partner ? (
-                    <span
-                      className="diary-cal-dot diary-cal-dot-partner"
-                      style={{ background: emotionMeta(partner.emotionCode).color }}
-                      title="상대"
+                    <EmotionImagePreview
+                      emotionCode={partner.emotionCode}
+                      triggerCodes={partner.triggerCodes}
+                      seedKey={`${partner.id}-${partner.entryDate}`}
+                      size={previewSize}
                     />
                   ) : null}
+                  {!mine && !partner ? <span className="diary-cal-empty-dot" /> : null}
                 </span>
               </button>
             );
@@ -160,40 +191,82 @@ export default function DiaryCalendarPage() {
         </div>
       </section>
 
-      <section className="stack">
-        <h2 className="diary-section-title">{selectedDate ?? '날짜 선택'}</h2>
+      <section className="diary-day-stage diary-enter" key={selectedDate ?? 'none'}>
+        <div className="diary-day-stage__head">
+          <h2 className="diary-day-stage__title">
+            {selectedDate ? formatDayLabel(selectedDate) : '날짜 선택'}
+          </h2>
+          {selectedDate === today ? (
+            <Link className="diary-day-stage__write" href="/diary">
+              오늘 쓰기
+            </Link>
+          ) : null}
+        </div>
+
         {!selectedRows.length ? (
-          <p className="muted">이 날의 기록이 없어요.</p>
+          <div className="diary-day-empty">
+            <span className="diary-day-empty__orb" aria-hidden />
+            <p className="muted" style={{ margin: 0 }}>
+              이 날의 기록이 없어요.
+            </p>
+            {selectedDate === today ? (
+              <Link className="btn btn-primary" href="/diary">
+                감정 기록하기
+              </Link>
+            ) : null}
+          </div>
         ) : (
-          selectedRows.map((row) => (
-            <div className="card stack" key={row.id}>
-              <div className="meta">
-                <span>{row.isMine ? '내 기록' : '상대의 기록'}</span>
-                <span
-                  className="diary-emotion-pill"
-                  style={{ background: emotionMeta(row.emotionCode).color }}
-                >
-                  {emotionMeta(row.emotionCode).label}
-                </span>
-              </div>
-              <p className="muted">
-                {row.triggerCodes.map(triggerLabel).join(' · ') || '트리거 없음'}
-              </p>
-              {row.isMine && row.comment ? (
-                <p style={{ whiteSpace: 'pre-wrap' }}>{row.comment}</p>
-              ) : null}
-              {!row.isMine ? (
-                <p className="muted" style={{ fontSize: '0.85rem' }}>
-                  상대의 메모는 보이지 않아요.
-                </p>
-              ) : null}
-              {row.isMine && row.entryDate === today ? (
-                <Link className="btn btn-secondary" href="/diary">
-                  오늘 일기 수정
-                </Link>
-              ) : null}
-            </div>
-          ))
+          <div
+            className={
+              selectedRows.length > 1 ? 'diary-day-pair' : 'diary-day-single'
+            }
+          >
+            {selectedRows.map((row) => {
+              const meta = emotionMeta(row.emotionCode);
+              return (
+                <article className="diary-day-entry" key={row.id}>
+                  <EmotionImagePreview
+                    emotionCode={row.emotionCode}
+                    triggerCodes={row.triggerCodes}
+                    seedKey={`${row.id}-${row.entryDate}`}
+                    size={selectedRows.length > 1 ? 96 : 120}
+                  />
+                  <div className="diary-day-entry__meta">
+                    <span className="diary-day-entry__who">
+                      {row.isMine ? '나' : '상대'}
+                    </span>
+                    <strong
+                      className="diary-day-entry__emotion"
+                      style={{ color: meta.color }}
+                    >
+                      {meta.label}
+                    </strong>
+                  </div>
+                  {row.triggerCodes.length ? (
+                    <div className="diary-day-triggers">
+                      {row.triggerCodes.map((code) => (
+                        <span className="diary-day-trigger" key={code}>
+                          <TriggerIcon code={code} size={14} />
+                          {triggerLabel(code)}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  {row.isMine && row.comment ? (
+                    <p className="diary-day-comment">{row.comment}</p>
+                  ) : null}
+                  {!row.isMine ? (
+                    <p className="diary-day-private">상대의 메모는 보이지 않아요</p>
+                  ) : null}
+                  {row.isMine && row.entryDate === today ? (
+                    <Link className="btn btn-secondary" href="/diary">
+                      수정
+                    </Link>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
         )}
       </section>
 
