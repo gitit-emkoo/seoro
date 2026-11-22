@@ -1,0 +1,38 @@
+---
+description: SEORO git 협업·푸시 규칙 (브랜치, 공유, main 머지)
+alwaysApply: true
+---
+
+# Git 협업 (GitHub Flow)
+
+## 브랜치
+
+- `main` — 공유 기준선. 직접 커밋·푸시하지 않는다.
+- 작업은 `feature/<주제>` (예: `feature/emotion-diary`, `feature/landing`).
+- 새 작업은 최신 `main`(또는 팀이 합의한 공유 브랜치)에서 분기한다.
+
+## 일상 (커밋·공유)
+
+1. 로컬에서 작업 → 커밋 (사용자 요청 시에만 커밋).
+2. **같은 피처 브랜치를 `origin`에 푸시**해 공유한다. 협업자가 이어받으려면 main 머지 전에 푸시만으로 충분하다.
+3. 푸시·PR·main 머지는 **사용자가 요청했을 때만** 한다. 임의로 푸시하지 않는다.
+
+```bash
+git push -u origin HEAD
+```
+
+## 협업자 동기화
+
+- 상대 피처를 가져올 때: `git fetch` 후 해당 브랜치를 checkout/pull, 또는 **자기 피처로 merge**.
+- `main`을 우회해 피처끼리 맞추는 것은 허용 (예: landing → emotion-diary).
+- `main`에 force push, `--no-verify`, 이력 재작성은 금지 (사용자 명시 시에만).
+
+## main에 합치기
+
+- 기능이 “공식 기준”이 될 때만 PR로 `main`에 머지한다.
+- PR 없이 로컬에서 main에 합친 뒤 force push하지 않는다.
+
+## AI 에이전트
+
+- 커밋/푸시/PR은 사용자 지시 후에만.
+- 이 규칙은 [AGENTS.md](AGENTS.md)와 동일 정책이다.
